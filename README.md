@@ -6,7 +6,7 @@ The goal is to learn what is practical with compact Blackwell systems: high-spee
 
 ## Current milestone — August 27, 2026
 
-The two-node system has now completed its first successful distributed large-model inference:
+The two-node system has now completed its first successful distributed large-model inference and initial performance benchmark:
 
 - Two ASUS GX10 / NVIDIA DGX Spark systems, each with an NVIDIA GB10 and 128 GB unified memory
 - DGX Spark 7.5.0, NVIDIA driver 580.173.02, CUDA 13.0
@@ -19,6 +19,7 @@ The two-node system has now completed its first successful distributed large-mod
 - Qwen running with tensor parallelism across both GB10s
 - OpenAI-compatible `/v1/models` and `/v1/chat/completions` endpoints validated
 - First generated Qwen completion returned successfully from the dual-node cluster
+- Initial 700-token generation benchmark completed in 46.118 seconds (~15.2 completion tokens/sec end-to-end)
 
 ## Runtime lesson learned
 
@@ -52,11 +53,25 @@ API request
    -> generated response
 ```
 
+## First benchmark
+
+A 45-token prompt was sent through the OpenAI-compatible API with a 700-token output ceiling.
+
+```text
+Wall-clock time:     46.118 seconds
+Completion tokens:   700
+Total tokens:        745
+Finish reason:       length
+Approx. throughput:  15.2 completion tokens/sec end-to-end
+```
+
+Because the response reached the configured token ceiling, the next benchmark should use streaming to measure time-to-first-token separately from sustained decode throughput.
+
 ## What comes next
 
 The next milestones are:
 
-1. Benchmark first-token latency and generation tokens/sec.
+1. Measure streaming first-token latency and decode throughput separately.
 2. Add a browser-based chat interface.
 3. Add API-key organization and per-workload usage monitoring.
 4. Add GPU, memory, container, and network observability.
