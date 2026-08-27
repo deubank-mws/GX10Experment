@@ -6,7 +6,7 @@ The goal is to learn what is practical with compact Blackwell systems: high-spee
 
 ## Current milestone — August 27, 2026
 
-The two-node system has now completed its first successful distributed large-model inference and initial performance benchmark:
+The two-node system now has a working browser-to-model path:
 
 - Two ASUS GX10 / NVIDIA DGX Spark systems, each with an NVIDIA GB10 and 128 GB unified memory
 - DGX Spark 7.5.0, NVIDIA driver 580.173.02, CUDA 13.0
@@ -16,14 +16,15 @@ The two-node system has now completed its first successful distributed large-mod
 - Successful two-node 16 GiB NCCL `all_gather` validation with zero errors
 - TensorRT-LLM multi-node containers with working container-to-container MPI/SSH
 - `nvidia/Qwen3-235B-A22B-FP4` downloaded and verified on both nodes
-- Qwen running with tensor parallelism across both GB10s
+- Qwen running with TP=2 across both GB10s
 - OpenAI-compatible `/v1/models` and `/v1/chat/completions` endpoints validated
-- First generated Qwen completion returned successfully from the dual-node cluster
-- Initial 700-token generation benchmark completed in 46.118 seconds (~15.2 completion tokens/sec end-to-end)
+- 700-token benchmark: 46.118 seconds, about 15.2 completion tokens/sec end-to-end
+- Short-prompt streaming TTFT baseline: about 0.25 seconds
+- Open WebUI running on the head node and successfully serving browser chat from a Windows workstation
 
 ## Runtime lesson learned
 
-The first deployment attempt used TensorRT-LLM `1.3.0rc13`. The two-node model launch reached a segmentation fault in the multi-node leader/worker processes. Because the networking, NCCL, MPI, and model checkpoint had already been validated independently, the experiment rolled the runtime back rather than rebuilding the cluster.
+The first deployment attempt used TensorRT-LLM `1.3.0rc13`. The two-node model launch segfaulted in the multi-node leader/worker processes. Because networking, NCCL, MPI, and the model checkpoint had already been validated independently, the runtime was rolled back rather than rebuilding the cluster.
 
 Using TensorRT-LLM `1.2.0rc6`, the same Qwen TP=2 deployment loaded successfully and served the first completion.
 
@@ -35,44 +36,51 @@ The experiment intentionally uses a model large enough to make meaningful use of
 
 ## Networking validation
 
-Both active ConnectX interfaces report RDMA `ACTIVE`, physical link `LINK_UP`, and 200000 Mb/s link speed.
+Both active ConnectX interfaces report RDMA `ACTIVE`, physical link `LINK_UP`, and 200000 Mb/s link speed. A 16 GiB NCCL `all_gather` completed successfully across the two GB10 GPUs with zero wrong or out-of-bounds values before large-model inference was attempted.
 
-A 16 GiB NCCL `all_gather` completed successfully across the two GB10 GPUs with zero wrong or out-of-bounds values before large-model inference was attempted.
+## Inference and benchmark milestone
 
-## First inference milestone
-
-After the model loaded successfully, the TensorRT-LLM server exposed an OpenAI-compatible API on the head node. A model-list request returned `nvidia/Qwen3-235B-A22B-FP4`, followed by a successful chat-completion request.
-
-The path is now proven end to end:
+The TensorRT-LLM server exposes an OpenAI-compatible API on the head node. The end-to-end path is:
 
 ```text
-API request
+Client request
    -> TensorRT-LLM
    -> Qwen3-235B-A22B-FP4
    -> TP=2 across two NVIDIA GB10 systems
    -> generated response
 ```
 
-## First benchmark
-
-A 45-token prompt was sent through the OpenAI-compatible API with a 700-token output ceiling.
+Initial benchmark:
 
 ```text
 Wall-clock time:     46.118 seconds
+Prompt tokens:       45
 Completion tokens:   700
 Total tokens:        745
-Finish reason:       length
 Approx. throughput:  15.2 completion tokens/sec end-to-end
 ```
 
-Because the response reached the configured token ceiling, the next benchmark should use streaming to measure time-to-first-token separately from sustained decode throughput.
+A separate short-prompt streaming test measured roughly **0.25 seconds time-to-first-token**. Larger-context TTFT remains a future benchmark.
+
+## Browser milestone
+
+Open WebUI was deployed on the head node with persistent local storage and connected to the TensorRT-LLM OpenAI-compatible endpoint. A Windows browser successfully selected the Qwen model and returned a chat response.
+
+The experiment now works through a normal browser rather than only `curl`:
+
+```text
+Windows browser
+   -> Open WebUI
+   -> TensorRT-LLM API
+   -> Qwen3-235B-A22B-FP4
+   -> dual GX10 cluster
+   -> browser response
+```
 
 ## What comes next
 
-The next milestones are:
-
-1. Measure streaming first-token latency and decode throughput separately.
-2. Add a browser-based chat interface.
+1. Create a cleaner curated model identity such as **Forge 235B** in Open WebUI.
+2. Confirm persistent chat history and browser UX.
 3. Add API-key organization and per-workload usage monitoring.
 4. Add GPU, memory, container, and network observability.
 5. Experiment with research and status-oriented agents.
