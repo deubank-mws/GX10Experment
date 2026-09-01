@@ -2,11 +2,9 @@
 
 A hands-on experiment building a two-node local AI system from two ASUS GX10 / NVIDIA DGX Spark systems.
 
-The goal is to learn what is practical with compact Blackwell systems: high-speed GPU networking, distributed inference, very large open-weight models, local APIs, gateways, observability, and low-maintenance operations.
+The project is now focused less on proving that distributed inference works and more on making the result behave like a **simple appliance**: power on, wait, open the browser, and use it.
 
 ## Current milestone — August 31, 2026
-
-The experiment has progressed from distributed model inference to a usable local AI service with a strong focus on making it behave more like an appliance than a fragile lab environment.
 
 Current capabilities include:
 
@@ -18,17 +16,16 @@ Current capabilities include:
 - TensorRT-LLM 1.2.0rc6 multi-node runtime
 - `nvidia/Qwen3-235B-A22B-FP4` cached and verified on both nodes
 - Qwen running with tensor parallelism across both GB10s
-- OpenAI-compatible model API validated
-- 700-token benchmark: 46.118 seconds, about 15.2 completion tokens/sec end-to-end
-- Short-prompt streaming TTFT baseline: about 0.25 seconds
-- Open WebUI serving browser chat
-- LiteLLM acting as the monitored OpenAI-compatible gateway
-- Dedicated virtual-key attribution working for browser chat
-- NVIDIA DCGM Exporter running on both systems
-- Prometheus scraping both GPU exporters plus LiteLLM metrics
-- Grafana backed by persistent storage and file-based provisioning
+- OpenAI-compatible model API
+- LiteLLM gateway with usage attribution
+- Open WebUI browser interface
+- Dual-node NVIDIA DCGM telemetry
+- Prometheus + Grafana monitoring
+- systemd-supervised distributed model startup
+- simple local health/recovery commands
+- lightweight Markdown-based persistent AI memory
 
-## Current service path
+## Service path
 
 ```text
 Browser
@@ -53,9 +50,56 @@ Browser
 TP=2 across two NVIDIA GB10 systems
 ```
 
-Both user-facing modes intentionally use the same Qwen backend: a fast/default interaction mode and a deeper reasoning mode. This keeps the system simple rather than multiplying model runtimes and maintenance work.
+The normal model picker is intentionally kept small. The goal is useful capability without turning the environment into a model zoo.
 
-Observability:
+## Performance baseline
+
+```text
+Wall-clock time:     46.118 seconds
+Prompt tokens:       45
+Completion tokens:   700
+Total tokens:        745
+Approx. throughput:  15.2 completion tokens/sec end-to-end
+Short-prompt TTFT:   ~0.25 seconds
+```
+
+## Runtime lesson learned
+
+An early deployment with a newer TensorRT-LLM release failed in the multi-node leader/worker processes. Rolling back to the known-good 1.2.0rc6 runtime produced a stable distributed Qwen deployment.
+
+The broader lesson: validate each layer independently and do not assume the newest runtime is automatically the best runtime for a specific model/hardware combination.
+
+## Reboot / automation lesson
+
+A later reboot exposed another distinction: **a working distributed model is not automatically a durable service**.
+
+The model cache, GPU networking and supporting containers survived, but the original Qwen process had been launched interactively and was not automatically recreated.
+
+The environment was then converted toward appliance-style operation:
+
+- persistent named TensorRT containers;
+- deterministic runtime configuration stored outside the containers;
+- distributed SSH/MPI preflight before model launch;
+- protected local credentials rather than interactive token entry;
+- systemd supervision for the long-running distributed Qwen service;
+- conservative restart-on-failure behavior;
+- simple status/start/stop/repair commands.
+
+After the transition, the complete stack reported healthy:
+
+```text
+Model service            OK
+Worker node              OK
+Qwen3-235B               OK
+LiteLLM                  OK
+Open WebUI               OK
+Prometheus               OK
+Grafana                  OK
+```
+
+The remaining durability proof is a full controlled two-node reboot/power-cycle with no manual recovery commands.
+
+## Observability
 
 ```text
 GPU exporter (node 1) --+
@@ -65,38 +109,24 @@ GPU exporter (node 2) --+--> Prometheus --> Grafana
 LiteLLM metrics ---------+
 ```
 
-## Runtime lesson learned
+Monitoring configuration is moving toward file-based provisioning so dashboards and data sources are reproducible rather than dependent on manual clicking.
 
-The first deployment attempt used TensorRT-LLM `1.3.0rc13`. The two-node model launch segfaulted in the multi-node leader/worker processes. Because networking, NCCL, MPI, and the model checkpoint had already been validated independently, the runtime was rolled back rather than rebuilding the cluster.
+## Portable AI memory
 
-Using TensorRT-LLM `1.2.0rc6`, the same Qwen TP=2 deployment loaded successfully and served completions.
+The experiment now also includes a lightweight Memoryfield-inspired memory layer.
 
-## Reboot / recovery lesson — August 31, 2026
+The durable source of truth is simply Markdown. Initial memories capture architecture, operating principles, model strategy and lessons learned.
 
-A real reboot exposed an important operational distinction: **a working distributed inference stack is not automatically a reboot-durable service**.
+This has several advantages:
 
-The model cache, GPU networking, and supporting services survived, but the distributed model launch still depended on state and processes that had originally been created interactively.
+- no additional always-on database is required for the initial implementation;
+- memories are human-readable and easy to version/back up;
+- future models can reuse the same accumulated knowledge;
+- semantic indexing can be added later only if the collection becomes large enough to need it.
 
-The runtime containers were rebuilt as persistent named containers with restart policies, cluster SSH and MPI were revalidated, and the model was relaunched from the existing local checkpoint rather than downloaded again.
-
-After repair, the complete service chain was validated again:
-
-```text
-Qwen backend              OK
-LiteLLM model route       OK
-Real gateway inference    OK
-Open WebUI                OK
-Grafana                   OK
-Prometheus                OK
-Both GPU metric targets   UP
-Gateway metric target     UP
-```
-
-Grafana configuration was also moved toward file-based provisioning so monitoring is less dependent on manual dashboard setup.
+The project intentionally avoids storing every chat or transient debugging event as memory. The focus is durable decisions, reasoning, procedures, discoveries and research conclusions.
 
 ## Operations goal
-
-The project is now optimizing for simplicity rather than adding infrastructure for its own sake.
 
 The desired experience is:
 
@@ -115,31 +145,18 @@ choose Fast or Deep
 
 Normal daily operation should require **zero terminal commands**.
 
-The next engineering milestone is therefore supervised automatic startup and recovery for the distributed Qwen service, followed by a full reboot test requiring no SSH/manual intervention.
-
-## Inference baseline
-
-```text
-Wall-clock time:     46.118 seconds
-Prompt tokens:       45
-Completion tokens:   700
-Total tokens:        745
-Approx. throughput:  15.2 completion tokens/sec end-to-end
-Short-prompt TTFT:   ~0.25 seconds
-```
-
 ## What comes next
 
-1. Supervise distributed Qwen startup/recovery automatically.
-2. Add simple status/start/stop/repair commands.
-3. Complete a dual-node reboot test with zero manual recovery.
-4. Keep the browser model picker intentionally limited to Fast + Deep.
-5. Only then move back to useful research/status workflows and integrations.
+1. Perform a full two-node reboot/power-cycle acceptance test.
+2. Keep the browser model picker intentionally limited to Fast + Deep.
+3. Connect the Markdown memory layer directly into normal AI use.
+4. Move away from infrastructure work and into useful research/status/automation workflows.
+5. Add additional models or services only when they solve a concrete capability gap.
 
 ## Security
 
-No passwords, SSH private keys, Hugging Face tokens, API keys, LiteLLM master/virtual keys, database credentials, or other secrets belong in this repository. Any organizational or regulated data should only be used where the environment and workflow have been explicitly approved for that data.
+No passwords, SSH private keys, Hugging Face tokens, API keys, gateway keys, database credentials, or other secrets belong in this repository. Any organizational or regulated data should only be used where the environment and workflow have been explicitly approved for that data.
 
 ---
 
-This public repository intentionally documents architecture, milestones, lessons learned, and benchmark results without exposing private configuration, internal addressing, user accounts, or credentials.
+This public repository intentionally documents architecture, milestones, lessons learned and benchmark results without exposing private addressing, accounts, credentials or sensitive topology details.
