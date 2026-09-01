@@ -19,11 +19,12 @@ Current capabilities include:
 - OpenAI-compatible model API
 - LiteLLM gateway with usage attribution
 - Open WebUI browser interface
-- Dual-node NVIDIA DCGM telemetry
+- dual-node NVIDIA DCGM telemetry
 - Prometheus + Grafana monitoring
 - systemd-supervised distributed model startup
 - simple local health/recovery commands
 - lightweight Markdown-based persistent AI memory
+- validated Fast and Deep routes backed by one distributed model
 
 ## Service path
 
@@ -50,7 +51,20 @@ Browser
 TP=2 across two NVIDIA GB10 systems
 ```
 
-The normal model picker is intentionally kept small. The goal is useful capability without turning the environment into a model zoo.
+## Fast + Deep without a model zoo
+
+The normal model picker is intentionally kept small.
+
+The two validated user-facing routes are:
+
+```text
+Forge Fast  -> same Qwen backend with thinking disabled
+Forge Deep  -> same Qwen backend with thinking enabled
+```
+
+Both routes were tested successfully through the gateway. This provides two clearly different interaction modes without keeping another large model loaded or introducing another inference runtime to maintain.
+
+The goal is useful capability with minimal operational complexity.
 
 ## Performance baseline
 
@@ -97,7 +111,7 @@ Prometheus               OK
 Grafana                  OK
 ```
 
-The remaining durability proof is a full controlled two-node reboot/power-cycle with no manual recovery commands.
+A full two-node power-cycle acceptance test is intentionally deferred until a natural restart opportunity rather than blocking useful work.
 
 ## Observability
 
@@ -109,22 +123,22 @@ GPU exporter (node 2) --+--> Prometheus --> Grafana
 LiteLLM metrics ---------+
 ```
 
-Monitoring configuration is moving toward file-based provisioning so dashboards and data sources are reproducible rather than dependent on manual clicking.
+Monitoring configuration is file-based where practical so dashboards and data sources are reproducible rather than dependent on repeated manual clicking.
 
 ## Portable AI memory
 
-The experiment now also includes a lightweight Memoryfield-inspired memory layer.
+The experiment includes a lightweight Memoryfield-inspired memory layer with Markdown as the durable source of truth.
 
-The durable source of truth is simply Markdown. Initial memories capture architecture, operating principles, model strategy and lessons learned.
+Initial memories capture architecture, operating principles, model strategy and lessons learned.
 
-This has several advantages:
+Advantages include:
 
-- no additional always-on database is required for the initial implementation;
-- memories are human-readable and easy to version/back up;
+- no heavyweight memory database is required for the initial implementation;
+- memories remain human-readable and easy to version/back up;
 - future models can reuse the same accumulated knowledge;
 - semantic indexing can be added later only if the collection becomes large enough to need it.
 
-The project intentionally avoids storing every chat or transient debugging event as memory. The focus is durable decisions, reasoning, procedures, discoveries and research conclusions.
+The next milestone is automatic retrieval of relevant Markdown memory into normal Fast/Deep requests.
 
 ## Operations goal
 
@@ -147,11 +161,10 @@ Normal daily operation should require **zero terminal commands**.
 
 ## What comes next
 
-1. Perform a full two-node reboot/power-cycle acceptance test.
-2. Keep the browser model picker intentionally limited to Fast + Deep.
-3. Connect the Markdown memory layer directly into normal AI use.
-4. Move away from infrastructure work and into useful research/status/automation workflows.
-5. Add additional models or services only when they solve a concrete capability gap.
+1. Automatically connect the Markdown memory layer to normal Fast/Deep AI use.
+2. Move away from infrastructure work and into useful research/status/automation workflows.
+3. Add additional models or services only when they solve a concrete capability gap.
+4. Complete the power-cycle acceptance test during a future natural restart.
 
 ## Security
 
