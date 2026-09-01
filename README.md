@@ -23,7 +23,7 @@ Current capabilities include:
 - Prometheus + Grafana monitoring
 - systemd-supervised distributed model startup
 - simple local health/recovery commands
-- lightweight Markdown-based persistent AI memory
+- lightweight Markdown-based persistent project knowledge
 - validated Fast and Deep routes backed by one distributed model
 
 ## Service path
@@ -64,7 +64,14 @@ Forge Deep  -> same Qwen backend with thinking enabled
 
 Both routes were tested successfully through the gateway. This provides two clearly different interaction modes without keeping another large model loaded or introducing another inference runtime to maintain.
 
-The goal is useful capability with minimal operational complexity.
+The next UX improvement is to make both modes feel like one natural assistant personality. A browser test exposed raw model tool-call markup in Deep mode, so tool/reasoning parsing and presentation are being cleaned up before additional agent features are added.
+
+Target experience:
+
+```text
+Forge Fast  — quick, conversational everyday assistant
+Forge Deep  — same personality, more deliberate reasoning
+```
 
 ## Performance baseline
 
@@ -123,22 +130,15 @@ GPU exporter (node 2) --+--> Prometheus --> Grafana
 LiteLLM metrics ---------+
 ```
 
-Monitoring configuration is file-based where practical so dashboards and data sources are reproducible rather than dependent on repeated manual clicking.
+Monitoring configuration is file-based where practical so dashboards and data sources are reproducible rather than dependent on repeated manual clicking. The goal is one useful operations dashboard rather than a large monitoring project of its own.
 
-## Portable AI memory
+## Portable project knowledge and memory direction
 
-The experiment includes a lightweight Memoryfield-inspired memory layer with Markdown as the durable source of truth.
+The experiment includes a lightweight Memoryfield-inspired Markdown knowledge layer. Initial pages capture architecture, operating principles, model strategy and lessons learned.
 
-Initial memories capture architecture, operating principles, model strategy and lessons learned.
+A custom gateway memory service was considered but deliberately rejected before deployment because it would add another service and callback path to maintain. The simpler direction is to use the browser layer's built-in user memory for normal Fast/Deep conversations while retaining Markdown as the portable durable project archive.
 
-Advantages include:
-
-- no heavyweight memory database is required for the initial implementation;
-- memories remain human-readable and easy to version/back up;
-- future models can reuse the same accumulated knowledge;
-- semantic indexing can be added later only if the collection becomes large enough to need it.
-
-The next milestone is automatic retrieval of relevant Markdown memory into normal Fast/Deep requests.
+This keeps the memory design human-readable, model-independent and easy to back up without creating another heavyweight infrastructure stack.
 
 ## Operations goal
 
@@ -161,10 +161,13 @@ Normal daily operation should require **zero terminal commands**.
 
 ## What comes next
 
-1. Automatically connect the Markdown memory layer to normal Fast/Deep AI use.
-2. Move away from infrastructure work and into useful research/status/automation workflows.
-3. Add additional models or services only when they solve a concrete capability gap.
-4. Complete the power-cycle acceptance test during a future natural restart.
+1. Finish natural Fast/Deep conversation behavior and tool-call parsing.
+2. Verify shared native user memory across Fast and Deep.
+3. Pin the currently working service image versions where practical.
+4. Keep monitoring intentionally simple and stable.
+5. Move away from infrastructure work and into useful research/status/automation workflows.
+6. Add additional models or services only when they solve a concrete capability gap.
+7. Complete the power-cycle acceptance test during a future natural restart.
 
 ## Security
 
