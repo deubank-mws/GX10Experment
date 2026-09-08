@@ -140,6 +140,14 @@ A custom gateway memory service was considered but deliberately rejected before 
 
 This keeps the memory design human-readable, model-independent and easy to back up without creating another heavyweight infrastructure stack.
 
+## Networking / split-tunnel lesson
+
+A useful operational lesson from the lab is that local AI availability can be affected by the client network path even when the model stack itself is healthy. Enterprise VPN and zero-trust clients may apply split-tunnel policies that interact poorly with a home-lab address range.
+
+The practical approach is to choose a local address range that is explicitly treated as local/bypassed by the client policy, and to verify container bridge networks before re-addressing the physical LAN. Container runtimes commonly use private address space internally, so avoiding overlap between the physical LAN and Docker networks is part of the migration plan.
+
+This reinforces a broader troubleshooting principle used throughout the project: prove model health, service health, LAN reachability, and remote-access/VPN behavior as separate layers instead of treating every browser failure as an AI-stack failure.
+
 ## Operations goal
 
 The desired experience is:
@@ -165,9 +173,10 @@ Normal daily operation should require **zero terminal commands**.
 2. Verify shared native user memory across Fast and Deep.
 3. Pin the currently working service image versions where practical.
 4. Keep monitoring intentionally simple and stable.
-5. Move away from infrastructure work and into useful research/status/automation workflows.
-6. Add additional models or services only when they solve a concrete capability gap.
-7. Complete the power-cycle acceptance test during a future natural restart.
+5. Complete the planned local-network addressing cleanup and validate access through the normal client network path.
+6. Move away from infrastructure work and into useful research/status/automation workflows.
+7. Add additional models or services only when they solve a concrete capability gap.
+8. Complete the power-cycle acceptance test during a future natural restart.
 
 ## Security
 
