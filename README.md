@@ -4,7 +4,7 @@ A hands-on experiment building a two-node local AI system from two ASUS GX10 / N
 
 The project is now focused less on proving that distributed inference works and more on making the result behave like a **simple appliance**: power on, wait, open the browser, and use it.
 
-## Current milestone — August 31, 2026
+## Current milestone — October 7, 2026
 
 Current capabilities include:
 
@@ -148,6 +148,25 @@ The practical approach is to choose a local address range that is explicitly tre
 
 This reinforces a broader troubleshooting principle used throughout the project: prove model health, service health, LAN reachability, and remote-access/VPN behavior as separate layers instead of treating every browser failure as an AI-stack failure.
 
+## Cluster-interface recovery lesson
+
+A later network migration produced a useful distributed-inference failure mode.
+
+The management LAN itself was healthy: both systems were reachable, SSH worked, and the dedicated inter-node link responded. The model still failed to become ready because the head node had **two active Ethernet interfaces on the same cluster subnet**. That created ambiguous interface selection for the distributed communication stack.
+
+The successful recovery was much simpler than rebuilding the AI runtime:
+
+1. keep one dedicated cluster interface active on each system;
+2. remove the duplicate same-subnet interface from the critical path;
+3. keep Wi-Fi out of normal cluster operation;
+4. verify inter-node ping and SSH;
+5. pin NCCL, UCX and MPI TCP selection to the known-good ConnectX interface;
+6. restart the existing known-good TensorRT-LLM service.
+
+After that cleanup, the existing two-node Qwen3-235B TP=2 backend returned healthy without replacing the model or rebuilding the whole stack.
+
+The broader lesson is important for small multi-node AI systems: **successful ping is necessary but not sufficient**. Multiple active NICs on the same subnet can still confuse collective-communication libraries even when ordinary IP connectivity appears perfect.
+
 ## Operations goal
 
 The desired experience is:
@@ -173,7 +192,7 @@ Normal daily operation should require **zero terminal commands**.
 2. Verify shared native user memory across Fast and Deep.
 3. Pin the currently working service image versions where practical.
 4. Keep monitoring intentionally simple and stable.
-5. Complete the planned local-network addressing cleanup and validate access through the normal client network path.
+5. Keep the simplified single-path cluster networking documented and stable; only add multi-rail networking deliberately.
 6. Move away from infrastructure work and into useful research/status/automation workflows.
 7. Add additional models or services only when they solve a concrete capability gap.
 8. Complete the power-cycle acceptance test during a future natural restart.
